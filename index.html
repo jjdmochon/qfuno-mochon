@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz de Química Farmacéutica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Estilos adicionales para mejorar la apariencia y la interactividad */
+        .btn-disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .correct-answer-highlight {
+            box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.7); /* Verde para correcto */
+        }
+        .incorrect-answer-highlight {
+             box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.7); /* Rojo para incorrecto */
+        }
+        .selected-answer-user {
+            filter: brightness(0.9);
+        }
+        .true-button.correct-answer-highlight {
+             box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.8); /* Borde verde más fuerte */
+        }
+        .false-button.correct-answer-highlight {
+             box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.8); /* Borde verde más fuerte */
+        }
+         .true-button.incorrect-selection-highlight { /* El usuario eligió verdadero, pero era falso */
+             box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.7); /* Borde rojo */
+        }
+        .false-button.incorrect-selection-highlight { /* El usuario eligió falso, pero era verdadero */
+             box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.7); /* Borde rojo */
+        }
+
+    </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
+
+    <div id="quiz-container" class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-2xl">
+        <!-- Encabezado -->
+        <div class="text-center mb-6">
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-700">Quiz de Química Farmacéutica</h1>
+            <p class="text-sm sm:text-base text-slate-500 mt-1">Pon a prueba tus conocimientos.</p>
+        </div>
+
+        <!-- Progreso y Puntuación -->
+        <div id="progress-score-section">
+            <div class="mb-2 text-sm text-slate-600 flex justify-between">
+                <span id="question-counter">Pregunta 1 de 19</span>
+                <span id="score-display">Puntuación: 0/19</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-2.5 mb-6">
+                <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" style="width: 5%"></div>
+            </div>
+        </div>
+
+        <!-- Área de Pregunta -->
+        <div id="question-area" class="mb-6">
+            <p id="question-text" class="text-base sm:text-lg text-slate-700 leading-relaxed min-h-[100px]">Cargando pregunta...</p>
+        </div>
+
+        <!-- Botones de Respuesta -->
+        <div id="answer-buttons" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <button id="true-button" class="true-button bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75">Verdadero</button>
+            <button id="false-button" class="false-button bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75">Falso</button>
+        </div>
+
+        <!-- Área de Feedback y Justificación -->
+        <div id="feedback-area" class="mb-6 p-4 rounded-lg bg-slate-50 hidden min-h-[100px]">
+            <p id="feedback-text" class="font-semibold mb-2 text-lg"></p>
+            <p id="justification-text" class="text-sm text-slate-600"></p>
+        </div>
+
+        <!-- Navegación -->
+        <div id="navigation-buttons" class="flex justify-between items-center">
+            <button id="prev-button" class="bg-slate-300 hover:bg-slate-400 text-slate-700 font-semibold py-2 px-5 rounded-lg transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-opacity-75">&lt; Anterior</button>
+            <button id="next-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-5 rounded-lg transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">Siguiente &gt;</button>
+        </div>
+
+        <!-- Área de Resultados (oculta inicialmente) -->
+        <div id="results-area" class="text-center mt-8 p-6 bg-blue-50 rounded-lg hidden">
+            <h2 class="text-2xl font-bold text-slate-700 mb-4">¡Quiz Completado!</h2>
+            <p id="final-score-text" class="text-xl text-slate-600 mb-2"></p>
+            <p id="final-message-text" class="text-slate-500 mb-6"></p>
+            <button id="restart-button" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75">Reiniciar Quiz</button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                question: "La toxicidad hepática del Paracetamol a dosis elevadas se produce principalmente por una saturación de las rutas de conjugación de Fase II, lo que causa la acumulación del propio Paracetamol sin metabolizar.",
+                correctAnswer: false,
+                justification: "La toxicidad del Paracetamol a dosis elevadas está relacionada con la formación de un metabolito intermedio tóxico durante su metabolismo de Fase I. Este intermedio tóxico es una iminoquinona, la cual reacciona con el glutatión. Aunque las rutas de conjugación de Fase II pueden saturarse a dosis altas, la toxicidad principal se debe a la producción de este metabolito tóxico de Fase I."
+            },
+            {
+                question: "En el análisis de Relación Cuantitativa Estructura-Actividad (QSAR) propuesto por Corwin Hansch, el parámetro π (pi) se utiliza para describir y cuantificar los efectos electrónicos de los sustituyentes en una molécula.",
+                correctAnswer: false,
+                justification: "Corwin Hansch, pionero en QSAR, propuso el uso de tres parámetros fundamentales para describir los efectos de los sustituyentes: π (pi) para cuantificar la lipofilia, σ (sigma) para cuantificar los efectos electrónicos, y E_s para cuantificar los efectos estéricos. Por lo tanto, el parámetro π (pi) se relaciona con la lipofilia, no con los efectos electrónicos."
+            },
+            {
+                question: "Las dianas biológicas principales a nivel molecular donde un fármaco ejerce su acción terapéutica son exclusivamente las proteínas, ya sean enzimas o receptores.",
+                correctAnswer: false,
+                justification: "Las dianas biológicas se definen como lugares específicos a nivel molecular donde un fármaco interactúa para producir un efecto. Para fármacos de pequeña molécula, las dianas biológicas principales mencionadas incluyen lípidos, ácidos nucleicos y proteínas (enzimas y receptores). Por lo tanto, las dianas no se limitan solo a las proteínas."
+            },
+            {
+                question: "El 5-Fluorouracilo (5-FU), un fármaco antitumoral, actúa principalmente inhibiendo la enzima Dihidrofolato Reductasa (DHFR).",
+                correctAnswer: false,
+                justification: "El 5-Fluorouracilo (5-FU) es un fármaco antitumoral cuyo mecanismo principal de acción implica la inhibición de la enzima Timidilato Sintetasa, clave en la síntesis de pirimidinas. Aunque la DHFR es una diana importante para otros fármacos antitumorales como el Metotrexato, este no es el mecanismo principal del 5-FU."
+            },
+            {
+                question: "En las reglas de nomenclatura IUPAC para sistemas heterocíclicos condensados, el punto de partida para la numeración es el átomo no participante en la condensación que quede más abajo y más a la izquierda, procediendo luego en sentido antihorario.",
+                correctAnswer: false,
+                justification: "Según las reglas de numeración para sistemas heterocíclicos condensados, la numeración comienza en el sentido de las agujas del reloj, empezando por el átomo no participante en la condensación que quede más arriba y más a la derecha."
+            },
+            {
+                question: "Las reacciones de conjugación con moléculas endógenas como el ácido glucurónico o el sulfato son las principales vías metabólicas que ocurren durante la Fase I del metabolismo de fármacos.",
+                correctAnswer: false,
+                justification: "El principal tipo de reacción metabólica que ocurre durante la Fase II del metabolismo de fármacos es la conjugación con moléculas endógenas como el ácido glucurónico o sulfato. Las reacciones de Fase I, por otro lado, incluyen principalmente oxidaciones catalizadas por el Citocromo P450."
+            },
+            {
+                question: "Por su debilidad individual, las fuerzas de Van der Waals y las interacciones hidrofóbicas no desempeñan un papel importante en la interacción fármaco-diana biológica.",
+                correctAnswer: false,
+                justification: "Las interacciones de Van der Waals / Interacciones hidrofóbicas son las más débiles que se establecen entre un fármaco y su diana biológica. Sin embargo, adquieren gran importancia cuando se dan de forma múltiple, especialmente en interacciones entre regiones no polares (por ejemplo, cadenas alquílicas)."
+            },
+            {
+                question: "El descubrimiento por Alexander Fleming de la Penicilina en 1928 es un ejemplo clásico de obtención de un prototipo mediante el método de \"Modificación y mejora de fármacos existentes\" ('fármacos gemelos').",
+                correctAnswer: false,
+                justification: "El descubrimiento de la penicilina por Alexander Fleming es un ejemplo clásico del método de búsqueda de prototipos conocido como \"Descubrimiento casual de la actividad (serendipia)\". La modificación y mejora de fármacos existentes es un método diferente."
+            },
+            {
+                question: "Las penicilinas semisintéticas, como la ampicilina o la amoxicilina, se obtienen industrialmente mediante la hidrólisis selectiva del anillo β-lactámico de las penicilinas naturales.",
+                correctAnswer: false,
+                justification: "La obtención industrial de penicilinas semisintéticas se logra mediante la hidrólisis selectiva de la cadena lateral de acilo unida al nitrógeno en posición 6 del núcleo penicilánico. Esto produce el Ácido 6-Aminopenicilánico (6-APA), que luego se puede acilar con diferentes cadenas laterales."
+            },
+            {
+                question: "Los fármacos inhibidores de quinasas, una clase importante de agentes antitumorales, actúan principalmente bloqueando el sitio de unión del sustrato proteico específico que la quinasa fosforila.",
+                correctAnswer: false,
+                justification: "Una estrategia principal en el diseño de fármacos inhibidores de quinasas, utilizados como agentes antitumorales dirigidos, consiste en desarrollar moléculas que compiten con el ATP por su sitio de unión en la enzima. El sustrato proteico es fosforilado por la quinasa utilizando ATP, pero la mayoría de los inhibidores de quinasas compiten por el sitio donde se une el ATP."
+            },
+            {
+                question: "Según las definiciones utilizadas en Química Farmacéutica, una \"droga\" se refiere exclusivamente a una sustancia sintética biológicamente activa utilizada con fines terapéuticos.",
+                correctAnswer: false,
+                justification: "Las \"drogas\" (en QF) se definen como materias primas de origen natural (animal, vegetal o mineral) que contienen principios activos con actividad farmacológica. Se utilizan directamente o en la elaboración de medicamentos, a diferencia del \"fármaco\" o \"principio activo\", que es una sustancia biológicamente activa químicamente pura y con acción terapéutica."
+            },
+            {
+                question: "La técnica de cribado de alto rendimiento (high-throughput screening) para la búsqueda de nuevos fármacos se caracteriza por aplicar ensayos biológicos muy detallados a un número reducido y selecto de moléculas.",
+                correctAnswer: false,
+                justification: "El cribado de alto rendimiento (high-throughput screening) consiste en someter un gran número de compuestos químicos a una batería de ensayos biológicos. El objetivo es buscar una acción desconocida o hipotética en miles de compuestos de forma rápida. El método de ensayos extensivos es el que aplica investigación farmacológica exhaustiva a un número pequeño de moléculas."
+            },
+            {
+                question: "Al comparar grupos bioisósteros para predecir si mantendrán una actividad biológica análoga, el color y el olor del compuesto son considerados parámetros significativos.",
+                correctAnswer: false,
+                justification: "Al comparar grupos bioisósteros, los parámetros significativos para predecir una actividad biológica análoga incluyen el tamaño o volumen de los grupos, la distribución electrónica, la acidez y la capacidad de formación de enlaces de hidrógeno. El color y el olor del compuesto no se mencionan como parámetros significativos en este contexto."
+            },
+            {
+                question: "Los agentes alquilantes, utilizados como fármacos antitumorales, ejercen su acción terapéutica principalmente al formar enlaces iónicos reversibles con grupos cargados positivamente en el ADN.",
+                correctAnswer: false,
+                justification: "El mecanismo general de acción de los agentes alquilantes, utilizados como fármacos antitumorales, implica la formación de enlaces covalentes al reaccionar con grupos nucleofílicos en diversas biomoléculas, especialmente el ADN. Estos enlaces covalentes son irreversibles."
+            },
+            {
+                question: "El Metotrexato (MTX) es un fármaco antitumoral que actúa principalmente inhibiendo la enzima Timidilato Sintetasa, interfiriendo así en la síntesis de pirimidinas.",
+                correctAnswer: false,
+                justification: "El Metotrexato (MTX) actúa principalmente como antagonista del ácido fólico. Su acción antitumoral la ejerce al inhibir la enzima Dihidrofolato Reductasa (DHFR), que es crucial para la reducción del ácido fólico a tetrahidrofolato, necesario para la síntesis de precursores del ADN. La inhibición de la timidilato sintetasa es el mecanismo principal del 5-Fluorouracilo."
+            },
+            {
+                question: "El índice eudísmico es un parámetro farmacológico utilizado para expresar la relación en actividad biológica entre un fármaco en su forma original y su correspondiente profármaco.",
+                correctAnswer: false,
+                justification: "El índice eudísmico es un parámetro que expresa la relación en actividad biológica entre dos enantiómeros de un fármaco. No se utiliza para comparar un fármaco con un profármaco."
+            },
+            {
+                question: "Los enantiómeros de un fármaco quiral suelen presentar actividad biológica idéntica debido a que sus propiedades físico-químicas (excepto la rotación de la luz polarizada) son muy similares.",
+                correctAnswer: false,
+                justification: "Los enantiómeros (isómeros especulares no superponibles) de un fármaco quiral usualmente exhiben diferente actividad biológica. Aunque algunas propiedades físicas y químicas pueden ser similares, la interacción con dianas biológicas, que son macromoléculas quirales (como proteínas), es estereoselectiva, llevando a respuestas biológicas distintas."
+            },
+            {
+                question: "Declaración: La estructura tridimensional de un fármaco, incluyendo su configuración (como la quiralidad de los enantiómeros) y su conformación preferida, no juegan un papel crucial en su capacidad para interaccionar de forma específica con el sitio de unión de una diana biológica como un receptor.",
+                correctAnswer: false,
+                justification: "La naturaleza proteica de los receptores permite una unión complementaria con los ligandos, y el \"encaje\" (fit) molecular basado en las características estéricas y la tridimensionalidad es fundamental para la respuesta biológica."
+            },
+            {
+                question: "Las diferencias observadas en la actividad biológica entre los estereoisómeros de un fármaco se deben principalmente a variaciones significativas en su peso molecular y solubilidad.",
+                correctAnswer: false,
+                justification: "Las diferencias en la actividad biológica entre estereoisómeros se deben principalmente a su diferente capacidad para interactuar de forma específica con el sitio de unión quiral de la diana biológica. Aunque el peso molecular es idéntico y la solubilidad en medios aquirales es la misma (para enantiómeros), la estereoquímica influye en cómo la molécula se posiciona y forma enlaces en el entorno quiral de la diana, lo que determina la actividad."
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        // Inicializar el estado de las respuestas del usuario
+        let userQuestionStates = questions.map(() => ({
+            userAnswer: null, // boolean (true/false) o null si no respondida
+            isCorrect: null,  // boolean o null
+            answered: false   // boolean
+        }));
+
+        const questionTextEl = document.getElementById('question-text');
+        const trueButton = document.getElementById('true-button');
+        const falseButton = document.getElementById('false-button');
+        const feedbackAreaEl = document.getElementById('feedback-area');
+        const feedbackTextEl = document.getElementById('feedback-text');
+        const justificationTextEl = document.getElementById('justification-text');
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const questionCounterEl = document.getElementById('question-counter');
+        const scoreDisplayEl = document.getElementById('score-display');
+        const progressBarEl = document.getElementById('progress-bar');
+
+        const resultsAreaEl = document.getElementById('results-area');
+        const finalScoreTextEl = document.getElementById('final-score-text');
+        const finalMessageTextEl = document.getElementById('final-message-text');
+        const restartButton = document.getElementById('restart-button');
+        
+        const quizContentEls = [
+            document.getElementById('progress-score-section'),
+            document.getElementById('question-area'),
+            document.getElementById('answer-buttons'),
+            document.getElementById('feedback-area'), // Se maneja su visibilidad por separado
+            document.getElementById('navigation-buttons')
+        ];
+
+
+        function loadQuestion() {
+            // Resetear clases de resaltado de botones de respuesta
+            trueButton.classList.remove('correct-answer-highlight', 'incorrect-selection-highlight', 'selected-answer-user');
+            falseButton.classList.remove('correct-answer-highlight', 'incorrect-selection-highlight', 'selected-answer-user');
+
+            const currentQuestion = questions[currentQuestionIndex];
+            const currentState = userQuestionStates[currentQuestionIndex];
+
+            questionTextEl.textContent = currentQuestion.question;
+            questionCounterEl.textContent = `Pregunta ${currentQuestionIndex + 1} de ${questions.length}`;
+            
+            updateProgressBar();
+
+            if (currentState.answered) {
+                feedbackAreaEl.classList.remove('hidden');
+                feedbackTextEl.textContent = currentState.isCorrect ? "¡Correcto!" : "Incorrecto.";
+                feedbackTextEl.className = `font-semibold mb-2 text-lg ${currentState.isCorrect ? 'text-green-600' : 'text-red-600'}`;
+                justificationTextEl.textContent = "Justificación: " + currentQuestion.justification;
+                
+                trueButton.disabled = true;
+                falseButton.disabled = true;
+                trueButton.classList.add('btn-disabled');
+                falseButton.classList.add('btn-disabled');
+
+                // Resaltar la respuesta del usuario y la correcta si fue incorrecta
+                if (currentState.userAnswer === true) {
+                    trueButton.classList.add('selected-answer-user');
+                    if (currentState.isCorrect) {
+                        trueButton.classList.add('correct-answer-highlight');
+                    } else {
+                        trueButton.classList.add('incorrect-selection-highlight');
+                        falseButton.classList.add('correct-answer-highlight'); // Resaltar la correcta (Falso)
+                    }
+                } else if (currentState.userAnswer === false) {
+                    falseButton.classList.add('selected-answer-user');
+                     if (currentState.isCorrect) {
+                        falseButton.classList.add('correct-answer-highlight');
+                    } else {
+                        falseButton.classList.add('incorrect-selection-highlight');
+                        trueButton.classList.add('correct-answer-highlight'); // Resaltar la correcta (Verdadero)
+                    }
+                }
+
+            } else {
+                feedbackAreaEl.classList.add('hidden');
+                feedbackTextEl.textContent = '';
+                justificationTextEl.textContent = '';
+                trueButton.disabled = false;
+                falseButton.disabled = false;
+                trueButton.classList.remove('btn-disabled');
+                falseButton.classList.remove('btn-disabled');
+            }
+
+            prevButton.disabled = currentQuestionIndex === 0;
+            prevButton.classList.toggle('btn-disabled', currentQuestionIndex === 0);
+            
+            if (currentQuestionIndex === questions.length - 1) {
+                nextButton.textContent = 'Finalizar Quiz';
+            } else {
+                nextButton.textContent = 'Siguiente >';
+            }
+        }
+
+        function selectAnswer(userSelectedAnswer) { // userSelectedAnswer es true o false
+            const currentQuestion = questions[currentQuestionIndex];
+            const currentState = userQuestionStates[currentQuestionIndex];
+
+            if (currentState.answered) return; // No hacer nada si ya se respondió
+
+            currentState.userAnswer = userSelectedAnswer;
+            currentState.answered = true;
+            currentState.isCorrect = userSelectedAnswer === currentQuestion.correctAnswer;
+
+            if (currentState.isCorrect) {
+                score++;
+            }
+
+            updateScoreDisplay();
+            loadQuestion(); // Recargar para mostrar feedback y deshabilitar botones
+        }
+
+        function updateScoreDisplay() {
+            scoreDisplayEl.textContent = `Puntuación: ${score}/${questions.length}`;
+        }
+        
+        function updateProgressBar() {
+            const progressPercentage = ((currentQuestionIndex + 1) / questions.length) * 100;
+            progressBarEl.style.width = `${progressPercentage}%`;
+        }
+
+        function showResults() {
+            quizContentEls.forEach(el => el.classList.add('hidden'));
+            resultsAreaEl.classList.remove('hidden');
+
+            finalScoreTextEl.textContent = `Tu puntuación final es: ${score} de ${questions.length}`;
+            let message = "";
+            const percentage = (score / questions.length) * 100;
+            if (percentage >= 90) {
+                message = "¡Excelente trabajo! Eres un experto en Química Farmacéutica.";
+            } else if (percentage >= 70) {
+                message = "¡Muy bien! Tienes un buen conocimiento del tema.";
+            } else if (percentage >= 50) {
+                message = "No está mal, pero hay espacio para mejorar. ¡Sigue estudiando!";
+            } else {
+                message = "Necesitas repasar un poco más. ¡No te desanimes y sigue aprendiendo!";
+            }
+            finalMessageTextEl.textContent = message;
+        }
+        
+        function resetQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            userQuestionStates = questions.map(() => ({
+                userAnswer: null,
+                isCorrect: null,
+                answered: false
+            }));
+            
+            resultsAreaEl.classList.add('hidden');
+            quizContentEls.forEach(el => el.classList.remove('hidden'));
+            // El feedback area debe estar oculta al inicio de una pregunta no respondida
+            feedbackAreaEl.classList.add('hidden');
+
+
+            updateScoreDisplay();
+            loadQuestion();
+        }
+
+        trueButton.addEventListener('click', () => selectAnswer(true));
+        falseButton.addEventListener('click', () => selectAnswer(false));
+
+        prevButton.addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuestion();
+            }
+        });
+
+        nextButton.addEventListener('click', () => {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion();
+            } else {
+                // Lógica para finalizar el quiz
+                showResults();
+            }
+        });
+        
+        restartButton.addEventListener('click', resetQuiz);
+
+        // Carga inicial
+        loadQuestion();
+        updateScoreDisplay();
+
+    </script>
+</body>
+</html>
